@@ -22,16 +22,18 @@ const Income = () => {
   });
   const [openAddIncomeModal, setopenAddIncomeModal] = useState(false);
   const [editingIncome, setEditingIncome] = useState(null);
+  const [dateRange, setDateRange] = useState({ from: "", to: "" });
 
-  const fetchIncomeDetails = async () => {
+  const fetchIncomeDetails = async (from = "", to = "") => {
     if (loading) return;
     setLoading(true);
-
     try {
-      const response = await axiosInstance.get(API_PATHS.INCOME.GET_ALL_INCOME);
-      if (response.data) {
-        setIncomeData(response.data);
-      }
+      const params = new URLSearchParams();
+      if (from) params.append("from", from);
+      if (to) params.append("to", to);
+      const url = `${API_PATHS.INCOME.GET_ALL_INCOME}${params.toString() ? "?" + params.toString() : ""}`;
+      const response = await axiosInstance.get(url);
+      if (response.data) setIncomeData(response.data);
     } catch (err) {
       console.error("Something went wrong. Please try again.", err);
     } finally {
@@ -140,9 +142,82 @@ const Income = () => {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
+  const handleImport = async (e) => {
+    const file = e.target.files[0];
+    if (!file) return;
+    const formData = new FormData();
+    formData.append("file", file);
+    try {
+      const res = await axiosInstance.post(
+        API_PATHS.INCOME.IMPORT_INCOME,
+        formData,
+        {
+          headers: { "Content-Type": "multipart/form-data" },
+        },
+      );
+      toast.success(res.data.message);
+      fetchIncomeDetails(dateRange.from, dateRange.to);
+    } catch (err) {
+      toast.error(err.response?.data?.message || "Import failed");
+    }
+    e.target.value = "";
+  };
+
   return (
     <DashboardLayout activeMenu="Income">
       <div className="my-5 mx-auto">
+        {/* Date range filter */}
+        <div className="flex flex-wrap items-center gap-3 mb-4">
+          <div className="flex items-center gap-2">
+            <label className="text-xs text-gray-500">From</label>
+            <input
+              type="date"
+              value={dateRange.from}
+              onChange={(e) =>
+                setDateRange((p) => ({ ...p, from: e.target.value }))
+              }
+              className="text-sm border border-gray-200 rounded-lg px-3 py-1.5 outline-none focus:border-primary"
+            />
+          </div>
+          <div className="flex items-center gap-2">
+            <label className="text-xs text-gray-500">To</label>
+            <input
+              type="date"
+              value={dateRange.to}
+              onChange={(e) =>
+                setDateRange((p) => ({ ...p, to: e.target.value }))
+              }
+              className="text-sm border border-gray-200 rounded-lg px-3 py-1.5 outline-none focus:border-primary"
+            />
+          </div>
+          <button
+            className="add-btn add-btn-fill text-sm"
+            onClick={() => fetchIncomeDetails(dateRange.from, dateRange.to)}
+          >
+            Filter
+          </button>
+          {(dateRange.from || dateRange.to) && (
+            <button
+              className="add-btn text-sm"
+              onClick={() => {
+                setDateRange({ from: "", to: "" });
+                fetchIncomeDetails();
+              }}
+            >
+              Clear
+            </button>
+          )}
+          <label className="add-btn text-sm cursor-pointer ml-auto">
+            Import CSV/Excel
+            <input
+              type="file"
+              accept=".xlsx,.xls,.csv"
+              className="hidden"
+              onChange={handleImport}
+            />
+          </label>
+        </div>
+
         <div className="grid grid-cols-1 gap-6">
           <div>
             <IncomeOverview

@@ -1,5 +1,6 @@
 const Income = require("../models/Income");
 const xlsx = require("xlsx");
+const fs = require("fs");
 //add income
 exports.addIncome = async (req, res) => {
   const userId = req.user.id;
@@ -30,7 +31,14 @@ exports.addIncome = async (req, res) => {
 exports.getAllIncome = async (req, res) => {
   const userId = req.user.id;
   try {
-    const income = await Income.find({ userId }).sort({ date: -1 });
+    const { from, to } = req.query;
+    const filter = { userId };
+    if (from || to) {
+      filter.date = {};
+      if (from) filter.date.$gte = new Date(from);
+      if (to) filter.date.$lte = new Date(to);
+    }
+    const income = await Income.find(filter).sort({ date: -1 });
     res.json(income);
   } catch (err) {
     res.status(500).json({ message: "Internal Server Error" }, err);
@@ -74,7 +82,45 @@ exports.deleteIncome = async (req, res) => {
   }
 };
 
-//downlaod income excel
+//import income from CSV/Excel
+exports.importIncome = async (req, res) => {
+  const userId = req.user.id;
+  try {
+    if (!req.file) {
+      return res.status(400).json({ message: "No file uploaded" });
+    }
+
+    const wb = xlsx.readFile(req.file.path);
+    const ws = wb.Sheets[wb.SheetNames[0]];
+    const rows = xlsx.utils.sheet_to_json(ws);
+
+    if (!rows.length) {
+      return res.status(400).json({ message: "File is empty" });
+    }
+
+    const incomes = rows
+      .map((row) => ({
+        userId,
+        source: row.Source || row.source || "Unknown",
+        amount: Number(row.Amount || row.amount) || 0,
+        date:
+          row.Date || row.date ? new Date(row.Date || row.date) : new Date(),
+        icon: row.Icon || row.icon || "",
+      }))
+      .filter((i) => i.amount > 0);
+
+    await Income.insertMany(incomes);
+    fs.unlinkSync(req.file.path);
+
+    res
+      .status(201)
+      .json({
+        message: `${incomes.length} income entries imported successfully`,
+      });
+  } catch (err) {
+    res.status(500).json({ message: "Import failed", error: err.message });
+  }
+};
 exports.downloadIncomeExcel = async (req, res) => {
   const userId = req.user.id;
 

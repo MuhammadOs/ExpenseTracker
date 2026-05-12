@@ -18,6 +18,7 @@ export const API_PATHS = {
     UPDATE_INCOME: (incomeId) => `api/v1/income/${incomeId}`,
     DELETE_INCOME: (incomeId) => `api/v1/income/${incomeId}`,
     DOWNLOAD_INCOME: "api/v1/income/downloadExcel",
+    IMPORT_INCOME: "api/v1/income/import",
   },
   EXPENSE: {
     ADD_EXPENSE: "api/v1/expense/add",
@@ -25,6 +26,18 @@ export const API_PATHS = {
     UPDATE_EXPENSE: (expenseId) => `api/v1/expense/${expenseId}`,
     DELETE_EXPENSE: (expenseId) => `api/v1/expense/${expenseId}`,
     DOWNLOAD_EXPENSE: "api/v1/expense/downloadExcel",
+    IMPORT_EXPENSE: "api/v1/expense/import",
+  },
+  BUDGET: {
+    SET_BUDGET: "api/v1/budget",
+    GET_BUDGETS: "api/v1/budget",
+    DELETE_BUDGET: (id) => `api/v1/budget/${id}`,
+  },
+  GOALS: {
+    CREATE_GOAL: "api/v1/goals",
+    GET_GOALS: "api/v1/goals",
+    UPDATE_GOAL: (id) => `api/v1/goals/${id}`,
+    DELETE_GOAL: (id) => `api/v1/goals/${id}`,
   },
   IMAGE: {
     UPLOAD_IMAGE: "api/v1/auth/upload-image",
