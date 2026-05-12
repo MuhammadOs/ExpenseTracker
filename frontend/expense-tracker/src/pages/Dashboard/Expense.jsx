@@ -9,6 +9,8 @@ import Modal from "../../components/Modal";
 import AddExpenseForm from "../../components/Expense/AddExpenseForm";
 import ExpenseList from "../../components/Expense/ExpenseList";
 import DeleteAlert from "../../components/DeleteAlert";
+import { TransactionListSkeleton } from "../../components/Skeleton";
+import EmptyState from "../../components/EmptyState";
 
 const Expense = () => {
   useUserAuth();
@@ -19,10 +21,11 @@ const Expense = () => {
     data: null,
   });
   const [openAddExpenseModal, setOpenAddExpenseModal] = useState(false);
+  const [editingExpense, setEditingExpense] = useState(null);
 
   const fetchExpenseDetails = async () => {
     if (loading) return;
-    setLoading[true];
+    setLoading(true);
 
     try {
       const response = await axiosInstance.get(
@@ -34,19 +37,18 @@ const Expense = () => {
     } catch (err) {
       console.error("Something went wrong. Please try again.", err);
     } finally {
-      setLoading[false];
+      setLoading(false);
     }
   };
 
   const handleAddExpense = async (expense) => {
     const { category, amount, date, icon } = expense;
-    //Validation
     if (!category.trim()) {
       toast.error("Category is required.");
       return;
     }
     if (!amount || isNaN(amount) || Number(amount) <= 0) {
-      toast.error("Amound should be a valid number greater than 0.");
+      toast.error("Amount should be a valid number greater than 0.");
       return;
     }
     if (!date) {
@@ -54,18 +56,32 @@ const Expense = () => {
       return;
     }
     try {
-      await axiosInstance.post(API_PATHS.EXPENSE.ADD_EXPENSE, {
-        category,
-        amount,
-        date,
-        icon,
-      });
+      if (editingExpense) {
+        await axiosInstance.put(
+          API_PATHS.EXPENSE.UPDATE_EXPENSE(editingExpense._id),
+          {
+            category,
+            amount,
+            date,
+            icon,
+          },
+        );
+        toast.success("Expense updated successfully");
+      } else {
+        await axiosInstance.post(API_PATHS.EXPENSE.ADD_EXPENSE, {
+          category,
+          amount,
+          date,
+          icon,
+        });
+        toast.success("Expense added successfully");
+      }
+      setEditingExpense(null);
       setOpenAddExpenseModal(false);
-      toast.success("Expense added successfully");
       fetchExpenseDetails();
     } catch (error) {
       console.error(
-        "Error adding expense",
+        "Error saving expense",
         error.response?.data?.message || error.message,
       );
     }
@@ -123,8 +139,7 @@ const Expense = () => {
 
   useEffect(() => {
     fetchExpenseDetails();
-
-    return () => {};
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
   return (
@@ -134,23 +149,50 @@ const Expense = () => {
           <div className="">
             <ExpenseOverview
               transactions={expenseData}
-              onAddExpense={() => setOpenAddExpenseModal(true)}
+              onAddExpense={() => {
+                setEditingExpense(null);
+                setOpenAddExpenseModal(true);
+              }}
             />
           </div>
-          <ExpenseList
-            transactions={expenseData}
-            onDelete={(id) => {
-              setOpenDeleteAlert({ show: true, data: id });
-            }}
-            onDownload={handleDownloadExpenseDetails}
-          />
+          {loading ? (
+            <TransactionListSkeleton rows={5} />
+          ) : expenseData.length === 0 ? (
+            <EmptyState
+              message="No expenses recorded yet"
+              subMessage="Start by adding your first expense entry."
+              action={() => {
+                setEditingExpense(null);
+                setOpenAddExpenseModal(true);
+              }}
+              actionLabel="Add Expense"
+            />
+          ) : (
+            <ExpenseList
+              transactions={expenseData}
+              onDelete={(id) => {
+                setOpenDeleteAlert({ show: true, data: id });
+              }}
+              onEdit={(expense) => {
+                setEditingExpense(expense);
+                setOpenAddExpenseModal(true);
+              }}
+              onDownload={handleDownloadExpenseDetails}
+            />
+          )}
         </div>
         <Modal
           isOpen={openAddExpenseModal}
-          onClose={() => setOpenAddExpenseModal(false)}
-          title="Add Expense"
+          onClose={() => {
+            setOpenAddExpenseModal(false);
+            setEditingExpense(null);
+          }}
+          title={editingExpense ? "Edit Expense" : "Add Expense"}
         >
-          <AddExpenseForm onAddExpense={handleAddExpense} />
+          <AddExpenseForm
+            onAddExpense={handleAddExpense}
+            initialData={editingExpense}
+          />
         </Modal>
         <Modal
           isOpen={openDeleteAlert.show}

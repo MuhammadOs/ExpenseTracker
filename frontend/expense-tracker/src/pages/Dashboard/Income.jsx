@@ -9,6 +9,8 @@ import toast from "react-hot-toast";
 import IncomeList from "../../components/Income/IncomeList";
 import DeleteAlert from "../../components/DeleteAlert";
 import { useUserAuth } from "../../hooks/useUserAuth";
+import { TransactionListSkeleton } from "../../components/Skeleton";
+import EmptyState from "../../components/EmptyState";
 
 const Income = () => {
   useUserAuth();
@@ -19,10 +21,11 @@ const Income = () => {
     data: null,
   });
   const [openAddIncomeModal, setopenAddIncomeModal] = useState(false);
+  const [editingIncome, setEditingIncome] = useState(null);
 
   const fetchIncomeDetails = async () => {
     if (loading) return;
-    setLoading[true];
+    setLoading(true);
 
     try {
       const response = await axiosInstance.get(API_PATHS.INCOME.GET_ALL_INCOME);
@@ -32,19 +35,18 @@ const Income = () => {
     } catch (err) {
       console.error("Something went wrong. Please try again.", err);
     } finally {
-      setLoading[false];
+      setLoading(false);
     }
   };
 
   const handleAddIncome = async (income) => {
     const { source, amount, date, icon } = income;
-    //Validation
     if (!source.trim()) {
       toast.error("Source is required.");
       return;
     }
     if (!amount || isNaN(amount) || Number(amount) <= 0) {
-      toast.error("Amound should be a valid number greater than 0.");
+      toast.error("Amount should be a valid number greater than 0.");
       return;
     }
     if (!date) {
@@ -52,18 +54,32 @@ const Income = () => {
       return;
     }
     try {
-      await axiosInstance.post(API_PATHS.INCOME.ADD_INCOME, {
-        source,
-        amount,
-        date,
-        icon,
-      });
+      if (editingIncome) {
+        await axiosInstance.put(
+          API_PATHS.INCOME.UPDATE_INCOME(editingIncome._id),
+          {
+            source,
+            amount,
+            date,
+            icon,
+          },
+        );
+        toast.success("Income updated successfully");
+      } else {
+        await axiosInstance.post(API_PATHS.INCOME.ADD_INCOME, {
+          source,
+          amount,
+          date,
+          icon,
+        });
+        toast.success("Income added successfully");
+      }
+      setEditingIncome(null);
       setopenAddIncomeModal(false);
-      toast.success("Income added successfully");
       fetchIncomeDetails();
     } catch (error) {
       console.error(
-        "Error adding income",
+        "Error saving income",
         error.response?.data?.message || error.message,
       );
     }
@@ -121,8 +137,7 @@ const Income = () => {
 
   useEffect(() => {
     fetchIncomeDetails();
-
-    return () => {};
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
   return (
@@ -132,23 +147,50 @@ const Income = () => {
           <div>
             <IncomeOverview
               transactions={incomeData}
-              onAddIncome={() => setopenAddIncomeModal(true)}
+              onAddIncome={() => {
+                setEditingIncome(null);
+                setopenAddIncomeModal(true);
+              }}
             />
           </div>
-          <IncomeList
-            transactions={incomeData}
-            onDelete={(id) => {
-              setOpenDeleteAlert({ show: true, data: id });
-            }}
-            onDownload={handleDownloadIncomeDetails}
-          />
+          {loading ? (
+            <TransactionListSkeleton rows={5} />
+          ) : incomeData.length === 0 ? (
+            <EmptyState
+              message="No income recorded yet"
+              subMessage="Start by adding your first income entry."
+              action={() => {
+                setEditingIncome(null);
+                setopenAddIncomeModal(true);
+              }}
+              actionLabel="Add Income"
+            />
+          ) : (
+            <IncomeList
+              transactions={incomeData}
+              onDelete={(id) => {
+                setOpenDeleteAlert({ show: true, data: id });
+              }}
+              onEdit={(income) => {
+                setEditingIncome(income);
+                setopenAddIncomeModal(true);
+              }}
+              onDownload={handleDownloadIncomeDetails}
+            />
+          )}
         </div>
         <Modal
           isOpen={openAddIncomeModal}
-          onClose={() => setopenAddIncomeModal(false)}
-          title="Add Income"
+          onClose={() => {
+            setopenAddIncomeModal(false);
+            setEditingIncome(null);
+          }}
+          title={editingIncome ? "Edit Income" : "Add Income"}
         >
-          <AddIncomeForm onAddIncome={handleAddIncome} />
+          <AddIncomeForm
+            onAddIncome={handleAddIncome}
+            initialData={editingIncome}
+          />
         </Modal>
         <Modal
           isOpen={openDeleteAlert.show}

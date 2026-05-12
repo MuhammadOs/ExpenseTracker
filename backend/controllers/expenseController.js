@@ -8,7 +8,7 @@ exports.addExpense = async (req, res) => {
   try {
     const { icon, category, amount, date } = req.body;
 
-    if ((!category, !amount, !date)) {
+    if (!category || !amount || !date) {
       return res.status(400).json({ message: "All fields are required" });
     }
 
@@ -35,6 +35,33 @@ exports.getAllExpense = async (req, res) => {
     res.json(expense);
   } catch (err) {
     res.status(500).json({ message: "Internal Server Error" }, err);
+  }
+};
+
+//update expense
+exports.updateExpense = async (req, res) => {
+  try {
+    const { icon, category, amount, date } = req.body;
+
+    if (!category || !amount || !date) {
+      return res.status(400).json({ message: "All fields are required" });
+    }
+
+    const updated = await Expense.findByIdAndUpdate(
+      req.params.id,
+      { icon, category, amount, date: new Date(date) },
+      { new: true },
+    );
+
+    if (!updated) {
+      return res.status(404).json({ message: "Expense not found" });
+    }
+
+    res.json(updated);
+  } catch (err) {
+    res
+      .status(500)
+      .json({ message: "Internal Server Error", error: err.message });
   }
 };
 

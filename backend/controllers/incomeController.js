@@ -7,7 +7,7 @@ exports.addIncome = async (req, res) => {
   try {
     const { icon, source, amount, date } = req.body;
 
-    if ((!source, !amount, !date)) {
+    if (!source || !amount || !date) {
       return res.status(400).json({ message: "All fields are required" });
     }
 
@@ -34,6 +34,33 @@ exports.getAllIncome = async (req, res) => {
     res.json(income);
   } catch (err) {
     res.status(500).json({ message: "Internal Server Error" }, err);
+  }
+};
+
+//update income
+exports.updateIncome = async (req, res) => {
+  try {
+    const { icon, source, amount, date } = req.body;
+
+    if (!source || !amount || !date) {
+      return res.status(400).json({ message: "All fields are required" });
+    }
+
+    const updated = await Income.findByIdAndUpdate(
+      req.params.id,
+      { icon, source, amount, date: new Date(date) },
+      { new: true },
+    );
+
+    if (!updated) {
+      return res.status(404).json({ message: "Income not found" });
+    }
+
+    res.json(updated);
+  } catch (err) {
+    res
+      .status(500)
+      .json({ message: "Internal Server Error", error: err.message });
   }
 };
 
@@ -64,7 +91,7 @@ exports.downloadIncomeExcel = async (req, res) => {
     const ws = xlsx.utils.json_to_sheet(data);
     xlsx.utils.book_append_sheet(wb, ws, "Income");
     xlsx.writeFile(wb, "income_details.xlsx");
-    res.download('income_details.xlsx');
+    res.download("income_details.xlsx");
   } catch (err) {
     res.status(500).json({ message: "Internal Server Error" }, err);
   }

@@ -2,7 +2,6 @@ const Income = require("../models/Income");
 const Expense = require("../models/Expense");
 const { isValidObjectId, Types } = require("mongoose");
 
-
 //Dashboard Data
 exports.getDashboardData = async (req, res) => {
   try {
@@ -14,19 +13,11 @@ exports.getDashboardData = async (req, res) => {
       { $match: { userId: userObjectId } },
       { $group: { _id: null, total: { $sum: "$amount" } } },
     ]);
-    console.log("total income", {
-      totalIncome,
-      userId: isValidObjectId(userId),
-    });
 
     const totalExpense = await Expense.aggregate([
       { $match: { userId: userObjectId } },
       { $group: { _id: null, total: { $sum: "$amount" } } },
     ]);
-    console.log("total expense", {
-      totalExpense,
-      userId: isValidObjectId(userId),
-    });
 
     //get income transactions in the last 60 days
     const last60DaysIncomeTransactions = await Income.find({
@@ -66,7 +57,7 @@ exports.getDashboardData = async (req, res) => {
           type: "expense",
         }),
       ),
-    ].sort((a, b) => a.date - b.date); //sort latest first
+    ].sort((a, b) => b.date - a.date); // sort latest first (descending)
 
     //final response
     res.json({
