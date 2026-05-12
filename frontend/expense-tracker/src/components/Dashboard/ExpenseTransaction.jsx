@@ -18,7 +18,7 @@ const ExpenseTransaction = ({ transactions, onSeeMore }) => {
           </p>
         ) : (
           transactions
-            .slice(0, 5)
+            .slice(0, 4)
             .map((expense) => (
               <TransactionInfoCard
                 key={expense._id}
